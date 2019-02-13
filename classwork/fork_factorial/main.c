@@ -38,7 +38,8 @@ int main(int argc, char **argv)
         exit(-1);
     }
 
-    doFactorial(arg, print);
+    // add one to arg to account for off by one
+    doFactorial(++arg, print);
 
     return 0;
 }
@@ -51,52 +52,43 @@ int main(int argc, char **argv)
  * a new child for each call. Each process should call
  * doFactorial() exactly once.
  */
-// static void doFactorial(int n, int doPrint)
-// {
-// 	int status = 0;
-// 	int total = 0;
-
-// 	if (n == 1)
-// 		exit(n);
-
-// 	if (n > 1)
-// 	{		
-// 		int pid = fork();
-// 		if (pid == 0)
-// 		{
-// 			doFactorial(n-1, doPrint);
-// 			exit(n-1);
-// 		}
-
-// 		if (pid > 0)
-// 		{	
-// 			if (WIFEXITED(status))
-// 			{
-// 			    total += WEXITSTATUS(status);
-// 				printf("%d\n", status);
-// 			}
-// 			exit(total - 1);
-// 		}
-
-// 	}
-// }
 
 static void doFactorial(int n, int doPrint)
 {
+	// declare exit status code which is really just the return value
 	int status = 0;
+	// the running total of factorial
 	int total = 0;
+	// the process is forked here
 	int pid = fork();
-	if (pid == 0)
+	// as long as n is positive the factorial is defined
+	if (n > 0)
 	{
-		exit(n);
-	}
-	if (pid > 0)
-	{
-		wait(&status);
-		if (WIFEXITED(status))
+		// if we're in the child
+		if (pid == 0)
 		{
-		    total += WEXITSTATUS(status);
-			printf("%d %d\n", status, total);
+			// doFactorial with n-1 to decrement value and don't print child values
+			doFactorial(n-1, 0);
+			// exit with 1, this is the base case.
+			exit(1);
+		}
+		if (pid > 0)
+		{
+			// wait until the child has exited
+			wait(&status);
+			// check if the child terminated normally
+			if (WIFEXITED(status))
+			{
+				// add to the total with the least 8 bits of the exit code
+			    total += WEXITSTATUS(status);
+			    // if we want to print, print
+				if (doPrint)
+					printf("%d\n", total);
+			}
+			// don't print from here on out
+			doPrint = 0;
+			// exit with the next product
+			exit (total * n);
 		}
 	}
 }

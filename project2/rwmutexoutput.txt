@@ -1,0 +1,71 @@
+Readers/Writers Program Launched
+W1 entered
+W2 entered
+W3 entered
+R1 entered
+Successful read of buffer.
+Threads initialized
+R2 entered
+Successful read of buffer.
+R3 entered
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+W1 finished
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+Successful read of buffer.
+W2 finished
+R1 finished
+R2 finished
+R3 finished
+W3 finished

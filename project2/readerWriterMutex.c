@@ -23,6 +23,7 @@
  */
 #define MAX_PAUSE 20000
 
+// we only need one mutex now to encapsulate the critical section.
 pthread_mutex_t rw_mutex;
 
 /**
@@ -65,18 +66,25 @@ void * writer(void * id) {
 	// Announce that the thread has started executing
 	printf("W%d entered\n", threadID); 
 
-	// TODO: Implement writer
+	// write WRITE_ACTIONS number of times.
 	for (int i = 0; i < WRITE_ACTIONS; i++)
 	{
+		// lock on rw_mutex to enforce mutual exclusion within the critical section
 		pthread_mutex_lock(&rw_mutex);
 
+
+		// Get both buffer elements which should be the same value.
 		buffer[0] = threadID;
 		buffer[1] = threadID;
 
+		// we can exit the critical section by unlocking rw_mutex.
 		pthread_mutex_unlock(&rw_mutex);
 
+
+		// pause to encourage a race condition.
 		randomDurationPause();
 
+		// we're in the for loop so we're still writing.
 		stillWriting = true;
 	}
 
@@ -100,12 +108,15 @@ void * reader(void * id) {
 	// Announce that the thread has started executing
 	printf("R%d entered\n", threadID); 
 
-	// TODO: Implement reader
+	// while the writer is still writing
 	while (stillWriting){
 
+		// reading is fine to do outside of the critical section
+		// when using a mutex to wrap the write
 		int b_0 = buffer[0];
 		int b_1 = buffer[1];
 
+		// we've succeeded if the buffer holds the same values.
 		if (b_0 == b_1)
 		{
 			printf("Successful read of buffer.\n");
@@ -117,6 +128,7 @@ void * reader(void * id) {
 			printf("the second read in thread: %d Consumed threadID %d\n\n", threadID, b_1);	
 		}
 
+		// pause to encourage data races
 		randomDurationPause();
 	}
 
@@ -133,6 +145,7 @@ int main() {
 	pthread_t readerThread[NUM_READERS], writerThread[NUM_WRITERS];
 	int id;
 
+	// init the mutex to default
 	pthread_mutex_init(&rw_mutex, NULL);
 
 	// Launch writers
@@ -171,6 +184,7 @@ int main() {
 		}
 	}
 
+	// cleanup
 	pthread_mutex_destroy(&rw_mutex);
 
 	return 0; // Successful termination

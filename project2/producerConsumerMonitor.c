@@ -35,7 +35,7 @@
  */
 #define MAX_PAUSE 20000
 
-
+// declare a mutex and condition variables since c has no monitors
 pthread_mutex_t buffer_mutex;
 pthread_cond_t not_full;
 pthread_cond_t not_empty;
@@ -149,6 +149,8 @@ void * producer(void * arg) {
 		// Start Critical Section: produce() must appear here to protect globalProductionCounter
 		pthread_mutex_lock(&buffer_mutex);
 		
+		// while count is BUFFER_SIZE, keep waiting for not_full so we can eventually get signaled, 
+		// and then produce by exiting the while loop
 		while (count == BUFFER_SIZE) 
 		{
 			pthread_cond_wait(&not_full, &buffer_mutex);
@@ -159,7 +161,9 @@ void * producer(void * arg) {
 
 		count++;
 
+		// tell the consumer we're not empty so we can consume
 		pthread_cond_signal (&not_empty);
+		// unlock the and exit the critical section
 		pthread_mutex_unlock(&buffer_mutex);
 		// End Critical Section
 		
@@ -185,21 +189,24 @@ void * consumer(void * arg) {
 	for(i = 0; i < CONSUMPTION_LIMIT; i++) { // Consume a set number of values
 
 		// Start Critical Section
+		// acquire the lock, enforcing mutual exclusion
 		pthread_mutex_lock(&buffer_mutex);
 
+		// while count is 0, we keep waiting until the producer increases count
+		// keep waiting while the buffer is empty
 		while (count == 0)
 		{
 			pthread_cond_wait(&not_empty, &buffer_mutex);
 		}
-
-		// pthread_mutex_unlock(&buffer_mutex);
 
 		int consumedResult = take(); // Take from buffer
 		consume(threadID, consumedResult); // Consume result
 
 		count--;
 
+		// signal to the condition variable not_full, so that we may produce
 		pthread_cond_signal (&not_full);
+		// unlock so that we can exit the critical section
 		pthread_mutex_unlock(&buffer_mutex);
 		// End Critical Section: consume() appears here to assure sequential ordering of output
 
@@ -219,6 +226,7 @@ int main() {
 	pthread_t producerThread[NUM_PRODUCERS], consumerThread[NUM_CONSUMERS];
 	int id;
 
+	// initialize the mutex and condition variables as default
 	pthread_mutex_init(&buffer_mutex, NULL);
    	pthread_cond_init (&not_full, NULL);
    	pthread_cond_init (&not_empty, NULL);
@@ -257,6 +265,7 @@ int main() {
 		}
 	}
 
+	// cleanup
 	pthread_mutex_destroy(&buffer_mutex);
   	pthread_cond_destroy(&not_full);
   	pthread_cond_destroy(&not_empty);

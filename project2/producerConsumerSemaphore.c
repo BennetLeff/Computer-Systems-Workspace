@@ -36,9 +36,9 @@
  */
 #define MAX_PAUSE 20000
 
-sem_t n;
-sem_t s;
-sem_t e;
+sem_t mutual_ex_sem;
+sem_t buffer_size_sem;
+sem_t empty_space_in_buffer_sem;
 
 /**
  * Block the currently running thread for a small random
@@ -143,17 +143,19 @@ void * producer(void * arg) {
 	printf("P%d entered\n", threadID); 
 	int i;
 	for(i = 0; i < PRODUCTION_LIMIT; i++) { // Produce a set number of values
-
-		sem_wait(&e);
-		sem_wait(&s);
+		// block on empty space in buffer to ensure we can write to the buffer
+		sem_wait(&empty_space_in_buffer_sem);
+		// block on mutual ex sem so that we can enforce mutual exclusion in the critical section
+		sem_wait(&mutual_ex_sem);
 
 		// Start Critical Section: produce() must appear here to protect globalProductionCounter
 		int producedResult = produce(threadID); // produce new value
 		append(producedResult); // add new value to buffer
 		// End Critical Section
 
-		sem_post(&s);
-		sem_post(&n);
+		// exit critical section and unblock
+		sem_post(&mutual_ex_sem);
+		sem_post(&items_in_buffer_sem);
 
 	}
 	// Announce completion of thread 
@@ -177,14 +179,18 @@ void * consumer(void * arg) {
 	for(i = 0; i < CONSUMPTION_LIMIT; i++) { // Consume a set number of values
 
 		// Start Critical Section
-		sem_wait(&n);
-		sem_wait(&s);
+		// block on items in buffer, ensuring we can take something
+		sem_wait(&items_in_buffer_sem);
+		// block on mutual_ex_sem as this is the main semaphore for encapsulating the critical section
+		// and enforcing mutual exclusion
+		sem_wait(&mutual_ex_sem);
 
 		int consumedResult = take(); // Take from buffer
 		consume(threadID, consumedResult); // Consume result
 
-		sem_post(&s);
-		sem_post(&e);
+		// unblock by signaling and exiting the critical section
+		sem_post(&mutual_ex_sem);
+		sem_post(&empty_space_in_buffer_sem);
 		// End Critical Section: consume() appears here to assure sequential ordering of output
 
 	}	
@@ -203,29 +209,29 @@ int main() {
 	pthread_t producerThread[NUM_PRODUCERS], consumerThread[NUM_CONSUMERS];
 	int id;
 
-
 	/*
-	 * Initialize the semaphore n with the value 0, and set the second arg to 0,
+	 * Initialize the semaphore items_in_buffer with the value 0, and set the middle arg to 0,
 	 * indicating, the semaphore is shared among threads.
 	 */
-	if(sem_init(&n, 0, 0))
+	if(sem_init(&items_in_buffer_sem, 0, 0))
     {
         printf("Error creating semaphore n\n");
         return -1;
     }
     /*
-     * s is initialized in the same fashion as n but initialize it to the value 1 instead.
+     * mutual_ex_sem is initialized in the same fashion as above but initialize it to the value 1 instead.
      */
-    if(sem_init(&s, 0, 1))
+    if(sem_init(&mutual_ex_sem, 0, 1))
     {
         printf("Error creating semaphore s\n");
         return -1;
     }
 
  	/*
-     * e is initialized in the same fashion as n but initialize it to the value BUFFER_SIZE instead.
+     * empty_space_in_buffer_sem is initialized in the same fashion as above
+     * but initialize it to the value BUFFER_SIZE instead.
      */
-    if(sem_init(&e, 0, BUFFER_SIZE))
+    if(sem_init(&empty_space_in_buffer_sem, 0, BUFFER_SIZE))
     {
         printf("Error creating semaphore s\n");
         return -1;
@@ -265,9 +271,10 @@ int main() {
 		}
 	}
 
-	sem_destroy(&n);
-	sem_destroy(&s);
-	sem_destroy(&e);
+	// cleanup
+	sem_destroy(&items_in_buffer_sem);
+	sem_destroy(&mutual_ex_sem);
+	sem_destroy(&empty_space_in_buffer_sem);
 
 	return 0; // Successful termination
 }

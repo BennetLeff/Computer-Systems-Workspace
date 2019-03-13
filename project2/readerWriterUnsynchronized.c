@@ -63,24 +63,26 @@ void * writer(void * id) {
 	// Announce that the thread has started executing
 	printf("W%d entered\n", threadID); 
 
-	// TODO: Implement writer
+	// Only run WRITE_ACTIONS number of times so we guarantee this terminates.
 	for (int i = 0; i < WRITE_ACTIONS; i++)
 	{
-		//semWait (wsem);
-		// WRITEUNIT();
-
+		// Fill the buffer with a threadID which is matched to the id argument.
 		buffer[0] = threadID;
 
+		// Pause to increase the likelihood of a data race.
 		randomDurationPause();
-		//semSignal (wsem);
 
+		// Fill the second buffer spot with what should be the same id as the first spot.
 		buffer[1] = threadID;
 
+		// Pause again to increase the likelihood of a data race.
 		randomDurationPause();
 
+		// We're in the loop so we must still be writing.
 		stillWriting = true;
 	}
 
+	// We're out of the loop so we must be done writing.
 	stillWriting = false;
 	
 	printf("W%d finished\n", threadID); 
@@ -101,22 +103,17 @@ void * reader(void * id) {
 	// Announce that the thread has started executing
 	printf("R%d entered\n", threadID); 
 
-	// TODO: Implement reader
 	while (stillWriting){
-		// semWait (x);
-		// readcount++;
-		// if(readcount == 1)
-		// semWait (wsem);
-		// semSignal (x);
-		// READUNIT();
-
-
+		// Get the first buffer element.
 		int b_0 = buffer[0];
 		randomDurationPause();
+		// After a pause, get the second buffer element.
+		// If there was no data race, these should be the same.
 		int b_1 = buffer[1];
+		// Pause again to encourage a data race.
 		randomDurationPause();
 
-
+		// Check if both values are the same. i.e. did we prevent a data race some how.
 		if (b_0 == b_1)
 		{
 			printf("Successful read of buffer.\n");
@@ -127,13 +124,6 @@ void * reader(void * id) {
 			printf("the first read in thread: %d Consumed threadID %d\n but ", threadID, b_0);
 			printf("the second read in thread: %d Consumed threadID %d\n\n", threadID, b_1);	
 		}
-
-		// semWait (x);
-		// readcount--;
-		//if(readcount == 0)
-		
-		// semSignal (wsem);
-		// semSignal (x);
 	}
 
 	printf("R%d finished\n", threadID); 

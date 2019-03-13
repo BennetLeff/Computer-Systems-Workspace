@@ -25,7 +25,9 @@
 #define MAX_PAUSE 20000
 
 int readcount = 0;
-sem_t x;
+// semaphore readcount_update assures readcount is set properly.
+sem_t readcount_update;
+// semaphore wswem enforces mutual exclusion.
 sem_t wsem;
 
 
@@ -69,18 +71,22 @@ void * writer(void * id) {
 	// Announce that the thread has started executing
 	printf("W%d entered\n", threadID); 
 
-	// TODO: Implement writer
+	// write WRITE_ACTIONS number of times.
 	for (int i = 0; i < WRITE_ACTIONS; i++)
 	{
+		// wait on wsem to enforce mutual exclusion within the critical section
 		sem_wait (&wsem);
 
+		// Get both buffer elements which should be the same value.
 		buffer[0] = threadID;
 		buffer[1] = threadID;
 
+		// we can exit the critical section by signalling wsem.
 		sem_post (&wsem);
 
 		stillWriting = true;
 
+		// pause to encourage a race condition.
 		randomDurationPause();
 	}
 	
@@ -103,17 +109,22 @@ void * reader(void * id) {
 	printf("R%d entered\n", threadID); 
 
 	while (stillWriting){
-		sem_wait (&x);
+		sem_wait (&readcount_update);
+		// we are reading so we increment readcount
 		readcount++;
+		// only block on the critical section if we are reading
 		if(readcount == 1)
 		{
 			sem_wait (&wsem);
 		}
-		sem_post (&x);
+		// signal readcount_update since it's been updated properly now.
+		sem_post (&readcount_update);
 
+		// we're in the critical section so we read the buffers.
 		int b_0 = buffer[0];
 		int b_1 = buffer[1];
 
+		// we've succeeded if the buffer holds the same values.
 		if (b_0 == b_1)
 		{
 			printf("Successful read of buffer.\n");
@@ -125,13 +136,18 @@ void * reader(void * id) {
 			printf("the second read in thread: %d Consumed threadID %d\n\n", threadID, b_1);	
 		}
 
-		sem_wait(&x);
+		// block again to decrement readcount
+		sem_wait(&readcount_update);
 
 		readcount--;
+
+		// if we're done reading, we can signal the critical section should be exited
+		// this allows the semaphore to be acquired inside the writer
 		if(readcount == 0)
 			sem_post (&wsem);
-		sem_post (&x);
+		sem_post (&readcount_update);
 
+		// pause to encourage data races
 		randomDurationPause();
 	}
 
@@ -148,20 +164,20 @@ int main() {
 	pthread_t readerThread[NUM_READERS], writerThread[NUM_WRITERS];
 	int id;
 
-	if(sem_init(&x, 0, 1))
+	// use sem_init to intialize readcount to the value 1
+	if(sem_init(&readcount_update, 0, 1))
     {
         printf("Error creating semaphore n\n");
         return -1;
     }
     /*
-     * s is initialized in the same fashion as n but initialize it to the value 1 instead.
+     * wsem is initialized in the same fashion as readcount
      */
     if(sem_init(&wsem, 0, 1))
     {
         printf("Error creating semaphore s\n");
         return -1;
     }
-
 
 	// Launch writers
 	for(id = 1; id <= NUM_WRITERS; id++) {
@@ -199,7 +215,8 @@ int main() {
 		}
 	}
 
-	sem_destroy(&x);
+	// cleanup
+	sem_destroy(&readcount_update);
 	sem_destroy(&wsem);
 
 	return 0; // Successful termination

@@ -145,10 +145,7 @@ int find_longest_contiguous_empty_space()
 			last_index_largest_space =  i - largest_space;
 		}
 	}
-
-
 	
-
 	return last_index_largest_space+1;
 }
 
@@ -156,36 +153,37 @@ int find_longest_contiguous_empty_space()
 // size == tightest space, i.e. size of space necessary for blocks i.e. size
 int find_tightest_space(int size)
 {
-	int tightest_empty_space = 0;
-	int cur_space_size = 0;
-	int last_index_was_0 = 0;
-	int index_of_tightest_space = 0;
+	int smallest = MEM_SIZE;
+	int current_smallest = 0;
+
+	int last_index = -1;
 
 	for (int i = 0; i < MEM_SIZE; i++)
 	{
-		
-		if (last_index_was_0 == 1)
-		{
-			// we are in an empty space
-			cur_space_size++;
-		}
-
 		if (memory[i] == 0)
 		{
-			last_index_was_0 = 1;
+			current_smallest += 1;
 		}
-		else
+
+		if (memory[i] != 0)
 		{
-			last_index_was_0 = 0;
-			if (cur_space_size < tightest_empty_space && cur_space_size > size)
+			if (current_smallest < smallest && current_smallest > size)
 			{
-				tightest_empty_space = cur_space_size;
-				index_of_tightest_space = i - cur_space_size;
+				smallest = current_smallest;
+				last_index = i - current_smallest;
 			}
+
+			current_smallest = 0;
+		}
+
+		if (current_smallest < smallest && current_smallest > size)
+		{
+			smallest = current_smallest;
+			last_index = i - current_smallest;
 		}
 	}
 
-	return index_of_tightest_space;
+	return last_index + 1;
 }
 
 int find_first_index(int id)
@@ -291,14 +289,12 @@ bool nextFit(int id, int size) {
 }
 
 bool bestFit(int id, int size) {
-	int index = 0;
-	if (id > 1)
-		index = find_tightest_space(size);
+	int index = find_tightest_space(size);
 
-	// printf("index starting at is %d and size is %d \n\n", index, size);
+	printf("Index for id %d is %d\n", id, index);
 
 	// if the contiguous allocation would overflow
-	if (index+size > MEM_SIZE)
+	if (index+size > MEM_SIZE || memory[index] != 0)
 	{
 		printf("Overflow due on id %d with size %d", id, size);
 		// if we didn't return true, we need to evict a process
@@ -316,7 +312,6 @@ bool bestFit(int id, int size) {
 		memory[i] = id;
 	}
  
-	return true;
 	return false;
 }
 

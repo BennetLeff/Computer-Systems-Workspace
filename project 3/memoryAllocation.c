@@ -111,13 +111,55 @@ int find_longest_contiguous_seq()
 	return id_of_longest;
 }
 
-// returns the id of the longest continuous sequence in memory
 int find_longest_contiguous_empty_space()
 {
-	int longest_empty_space = 0;
-	int current_empty_length = 0;
+
+	int largest_space = 0;
+	int temp_largest_space = 0;
+
+	int last_index_largest_space = 0;
+
+	for (int i = 0; i < MEM_SIZE; i++)
+	{
+		if (memory[i] == 0)
+		{
+			// printf("Got a zero.... \n");
+			temp_largest_space += 1;
+			// printf("temp_largest_space == %d\n", temp_largest_space);
+		}
+
+		if (memory[i] != 0)
+		{
+			if (temp_largest_space > largest_space)
+			{
+				largest_space = temp_largest_space;
+				last_index_largest_space = i - largest_space;
+			}
+
+			temp_largest_space = 0;
+		}
+
+		if (temp_largest_space > largest_space)
+		{
+			largest_space = temp_largest_space;
+			last_index_largest_space =  i - largest_space;
+		}
+	}
+
+
+	
+
+	return last_index_largest_space+1;
+}
+
+
+// size == tightest space, i.e. size of space necessary for blocks i.e. size
+int find_tightest_space(int size)
+{
+	int tightest_empty_space = 0;
+	int cur_space_size = 0;
 	int last_index_was_0 = 0;
-	int index_of_longest_empty_space = 0;
+	int index_of_tightest_space = 0;
 
 	for (int i = 0; i < MEM_SIZE; i++)
 	{
@@ -125,7 +167,7 @@ int find_longest_contiguous_empty_space()
 		if (last_index_was_0 == 1)
 		{
 			// we are in an empty space
-			current_empty_length++;
+			cur_space_size++;
 		}
 
 		if (memory[i] == 0)
@@ -135,13 +177,15 @@ int find_longest_contiguous_empty_space()
 		else
 		{
 			last_index_was_0 = 0;
-			if (current_empty_length > longest_empty_space)
+			if (cur_space_size < tightest_empty_space && cur_space_size > size)
 			{
-				longest_empty_space = current_empty_length;
-				index_of_longest_empty_space = i - current_empty_length;
+				tightest_empty_space = cur_space_size;
+				index_of_tightest_space = i - cur_space_size;
 			}
 		}
 	}
+
+	return index_of_tightest_space;
 }
 
 int find_first_index(int id)
@@ -241,23 +285,45 @@ bool nextFit(int id, int size) {
 	for (int i = index; i < index+size; i++)
 	{
 		memory[i] = id;
-		printf("called %d\n", i);
 	}
  
 	return true;
 }
 
 bool bestFit(int id, int size) {
-	// TODO
+	int index = 0;
+	if (id > 1)
+		index = find_tightest_space(size);
+
+	// printf("index starting at is %d and size is %d \n\n", index, size);
+
+	// if the contiguous allocation would overflow
+	if (index+size > MEM_SIZE)
+	{
+		printf("Overflow due on id %d with size %d", id, size);
+		// if we didn't return true, we need to evict a process
+		int id_to_evict = find_longest_contiguous_seq();
+
+		vacateProcess(id_to_evict);
+
+		index = find_tightest_space(size);
+	}
+
+	// count up to MEM_SIZE - size, because past that index, the number of blocks
+	// requested will not fit.
+	for (int i = index; i < index+size; i++)
+	{
+		memory[i] = id;
+	}
+ 
+	return true;
 	return false;
 }
 
 bool worstFit(int id, int size) {
-	int index = 0;
-	if (id > 1)
-		index = find_longest_contiguous_empty_space();
+	int index = find_longest_contiguous_empty_space();
 
-	// printf("index starting at is %d and size is %d \n\n", index, size);
+	printf("index starting at is %d and size is %d \n\n", index, size);
 
 	// if the contiguous allocation would overflow
 	if (index+size > MEM_SIZE)
@@ -276,7 +342,6 @@ bool worstFit(int id, int size) {
 	for (int i = index; i < index+size; i++)
 	{
 		memory[i] = id;
-		printf("called %d\n", i);
 	}
  
 	return true;

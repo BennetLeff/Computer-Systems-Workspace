@@ -111,6 +111,39 @@ int find_longest_contiguous_seq()
 	return id_of_longest;
 }
 
+// returns the id of the longest continuous sequence in memory
+int find_longest_contiguous_empty_space()
+{
+	int longest_empty_space = 0;
+	int current_empty_length = 0;
+	int last_index_was_0 = 0;
+	int index_of_longest_empty_space = 0;
+
+	for (int i = 0; i < MEM_SIZE; i++)
+	{
+		
+		if (last_index_was_0 == 1)
+		{
+			// we are in an empty space
+			current_empty_length++;
+		}
+
+		if (memory[i] == 0)
+		{
+			last_index_was_0 = 1;
+		}
+		else
+		{
+			last_index_was_0 = 0;
+			if (current_empty_length > longest_empty_space)
+			{
+				longest_empty_space = current_empty_length;
+				index_of_longest_empty_space = i - current_empty_length;
+			}
+		}
+	}
+}
+
 int find_first_index(int id)
 {
 	int i = 0;
@@ -220,8 +253,33 @@ bool bestFit(int id, int size) {
 }
 
 bool worstFit(int id, int size) {
-	// TODO
-	return false;
+	int index = 0;
+	if (id > 1)
+		index = find_longest_contiguous_empty_space();
+
+	// printf("index starting at is %d and size is %d \n\n", index, size);
+
+	// if the contiguous allocation would overflow
+	if (index+size > MEM_SIZE)
+	{
+		printf("Overflow due on id %d with size %d", id, size);
+		// if we didn't return true, we need to evict a process
+		int id_to_evict = find_longest_contiguous_seq();
+
+		vacateProcess(id_to_evict);
+
+		index = find_longest_contiguous_empty_space();
+	}
+
+	// count up to MEM_SIZE - size, because past that index, the number of blocks
+	// requested will not fit.
+	for (int i = index; i < index+size; i++)
+	{
+		memory[i] = id;
+		printf("called %d\n", i);
+	}
+ 
+	return true;
 }
 
 /**

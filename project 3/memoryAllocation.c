@@ -349,7 +349,58 @@ bool worstFit(int id, int size) {
  * of allocation, even if it is not used by the process.
  */
 bool pages(int id, int size) {
-	// TODO
+	int index = 0;
+
+	int frames_left = size / 2;
+
+	// count up to MEM_SIZE - size, because past that index, the number of blocks
+	// requested will not fit.
+	while (index < (MEM_SIZE - frames_left) && frames_left > 0)
+	{
+		// keep incrementing until we get a zero so there's room
+		if (memory[index] != 0)
+		{
+			index += FRAME_SIZE;
+		}
+
+		// if the entire frame is clear
+		if (memory[index] == 0 && memory[index + 1] == 0)
+		{
+			memory[index] = id;
+			
+			if (frames_left > 1)
+				memory[index+1] = id;
+			else
+			{
+				if (size % 2 == 1)
+				{
+					memory[index+1] = 0;
+				}
+				else
+				{
+					memory[index+1] = id;
+				}
+			}
+			
+			frames_left -= 1;
+
+			index += FRAME_SIZE;
+
+
+			printf("index left is %d \n", index);
+		}
+	}
+
+	if (frames_left > 0)
+	{
+
+		// if we didn't return true, we need to evict a process
+		int id_to_evict = find_longest_contiguous_seq();
+		
+		vacateProcess(id_to_evict);
+		pages(id, frames_left * 2);
+	}
+
 	return false;
 }
 

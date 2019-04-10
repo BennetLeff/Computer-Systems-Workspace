@@ -111,6 +111,40 @@ int find_longest_contiguous_seq()
 	return id_of_longest;
 }
 
+int find_first_index(int id)
+{
+	int i = 0;
+	while (i < MEM_SIZE && memory[i] != id)
+		i++;
+	return i;
+}
+
+// Given an ID, find it's last index in memory
+int find_last_index(int id)
+{
+	// printf("looking for id %d\n", id);
+	int i = 0;
+	int found_id = 0;
+	while (i < MEM_SIZE)
+	{
+
+		if (found_id == 0 && memory[i] == id)
+		{
+			// printf("Found first of ID %d at: %d \n", id, i);
+			found_id = 1;
+		}
+
+		if (found_id && memory[i] != id)
+		{
+			return i;
+		}
+
+		i++;
+	}
+
+	return i;
+}
+
 /**
  * For each allocation policy below, assign the process id to
  * a contiguous region of memory with "size" number of blocks. Return
@@ -144,7 +178,7 @@ bool firstFit(int id, int size) {
 	int id_to_evict = find_longest_contiguous_seq();
 
 	vacateProcess(id_to_evict);
-	
+
 	// now that we've evicted the process, we can call firstFit again
 	firstFit(id, size);
 
@@ -152,8 +186,32 @@ bool firstFit(int id, int size) {
 }
 
 bool nextFit(int id, int size) {
-	// TODO
-	return false;
+	int index = 0;
+	if (id > 1)
+		index = find_last_index(id-1);
+
+	// printf("index starting at is %d and size is %d \n\n", index, size);
+
+	// if the contiguous allocation would overflow
+	if (index+size > MEM_SIZE)
+	{
+		// if we didn't return true, we need to evict a process
+		int id_to_evict = find_longest_contiguous_seq();
+
+		index = find_first_index(id_to_evict);
+
+		vacateProcess(id_to_evict);
+	}
+
+	// count up to MEM_SIZE - size, because past that index, the number of blocks
+	// requested will not fit.
+	for (int i = index; i < index+size; i++)
+	{
+		memory[i] = id;
+		printf("called %d\n", i);
+	}
+ 
+	return true;
 }
 
 bool bestFit(int id, int size) {

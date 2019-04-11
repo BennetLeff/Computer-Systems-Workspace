@@ -67,6 +67,7 @@ void vacateProcess(int id) {
 			memory[i] = 0;
 		}
 	}
+	printf("completed vacating... \n" );
 }
 
 /**
@@ -220,6 +221,16 @@ int find_last_index(int id)
 	return i;
 }
 
+int count_number_of_zeroes()
+{
+	int count = 0;
+	for (int i = 0; i < MEM_SIZE; i++)
+		if (memory[i] == 0)
+			count++;
+
+	return count;
+}
+
 /**
  * For each allocation policy below, assign the process id to
  * a contiguous region of memory with "size" number of blocks. Return
@@ -233,6 +244,8 @@ bool firstFit(int id, int size) {
 	// requested will not fit.
 	while (index < (MEM_SIZE - size))
 	{
+		// printf("GOt here 2222... \n");
+
 		// keep incrementing until we get a zero so there's room
 		if (memory[index] != 0)
 		{
@@ -241,6 +254,7 @@ bool firstFit(int id, int size) {
 		// if we hit a zero
 		else
 		{
+			// replace the zero with an id
 			for (int i = 0; i < size; i++)
 			{
 				memory[index+i] = id;
@@ -249,13 +263,14 @@ bool firstFit(int id, int size) {
 			return true;
 		}
 	}
+
 	// if we didn't return true, we need to evict a process
-	int id_to_evict = find_longest_contiguous_seq();
+	// int id_to_evict = find_longest_contiguous_seq();
 
-	vacateProcess(id_to_evict);
+	// vacateProcess(id_to_evict);
 
-	// now that we've evicted the process, we can call firstFit again
-	firstFit(id, size);
+	// now that we've evicted or compacted
+	// the process, we can call firstFit again
 
 	return false;
 }
@@ -268,15 +283,15 @@ bool nextFit(int id, int size) {
 	// printf("index starting at is %d and size is %d \n\n", index, size);
 
 	// if the contiguous allocation would overflow
-	if (index+size > MEM_SIZE)
-	{
-		// if we didn't return true, we need to evict a process
-		int id_to_evict = find_longest_contiguous_seq();
+	// if (index+size > MEM_SIZE)
+	// {
+	// 	// if we didn't return true, we need to evict a process
+	// 	int id_to_evict = find_longest_contiguous_seq();
 
-		index = find_first_index(id_to_evict);
+	// 	index = find_first_index(id_to_evict);
 
-		vacateProcess(id_to_evict);
-	}
+	// 	vacateProcess(id_to_evict);
+	// }
 
 	// count up to MEM_SIZE - size, because past that index, the number of blocks
 	// requested will not fit.
@@ -291,19 +306,16 @@ bool nextFit(int id, int size) {
 bool bestFit(int id, int size) {
 	int index = find_tightest_space(size);
 
-	printf("Index for id %d is %d\n", id, index);
-
 	// if the contiguous allocation would overflow
-	if (index+size > MEM_SIZE || memory[index] != 0)
-	{
-		printf("Overflow due on id %d with size %d", id, size);
-		// if we didn't return true, we need to evict a process
-		int id_to_evict = find_longest_contiguous_seq();
+	// if (index+size > MEM_SIZE || memory[index] != 0)
+	// {
+	// 	// if we didn't return true, we need to evict a process
+	// 	int id_to_evict = find_longest_contiguous_seq();
 
-		vacateProcess(id_to_evict);
+	// 	vacateProcess(id_to_evict);
 
-		index = find_tightest_space(size);
-	}
+	// 	index = find_tightest_space(size);
+	// }
 
 	// count up to MEM_SIZE - size, because past that index, the number of blocks
 	// requested will not fit.
@@ -318,19 +330,18 @@ bool bestFit(int id, int size) {
 bool worstFit(int id, int size) {
 	int index = find_longest_contiguous_empty_space();
 
-	printf("index starting at is %d and size is %d \n\n", index, size);
-
 	// if the contiguous allocation would overflow
-	if (index+size > MEM_SIZE)
-	{
-		printf("Overflow due on id %d with size %d", id, size);
-		// if we didn't return true, we need to evict a process
-		int id_to_evict = find_longest_contiguous_seq();
+	// if (index+size > MEM_SIZE)
+	// {
+	// 	// if we didn't return true, we need to evict a process
+	// 	int id_to_evict = find_longest_contiguous_seq();
 
-		vacateProcess(id_to_evict);
+	// 	vacateProcess(id_to_evict);
 
-		index = find_longest_contiguous_empty_space();
-	}
+	// 	// Get the starting point to insert an id at by finding the 
+	// 	// index of the longest contigous empty space
+	// 	index = find_longest_contiguous_empty_space();
+	// }
 
 	// count up to MEM_SIZE - size, because past that index, the number of blocks
 	// requested will not fit.
@@ -381,27 +392,45 @@ bool pages(int id, int size) {
 					memory[index+1] = id;
 				}
 			}
-			
+
 			frames_left -= 1;
 
 			index += FRAME_SIZE;
-
-
-			printf("index left is %d \n", index);
 		}
 	}
 
-	if (frames_left > 0)
-	{
+	// if (frames_left > 0)
+	// {
 
-		// if we didn't return true, we need to evict a process
-		int id_to_evict = find_longest_contiguous_seq();
+	// 	// if we didn't return true, we need to evict a process
+	// 	int id_to_evict = find_longest_contiguous_seq();
 		
-		vacateProcess(id_to_evict);
-		pages(id, frames_left * 2);
-	}
+	// 	vacateProcess(id_to_evict);
+	// 	pages(id, frames_left * 2);
+	// }
 
 	return false;
+}
+
+// loop through memory and determine if it's compacted or not.
+// return 0 for not compacted, 1 for is compacted
+int is_compact()
+{
+	int got_to_zero = 0;
+	for (int i = 0; i < MEM_SIZE; i++)
+	{
+		if (memory[i] == 0 && got_to_zero == 0)
+		{
+			got_to_zero = 1;
+		}
+
+		if (memory[i] != 0 && got_to_zero == 1)
+		{
+			return 0;
+		}
+	}
+
+	return 1;
 }
 
 // Track the number of compaction events
@@ -413,7 +442,36 @@ int compactionEvents = 0;
  * need it.
  */
 void compaction() {
-	// TODO
+	int hit_zero = 0;
+	int count = 0;
+	int id_to_move_back = 0;
+	for (int i = 1; i < MEM_SIZE; i++)
+	{
+		if (memory[i] == 0 && hit_zero == 0)
+		{
+			count = 0;
+			hit_zero = 1;
+		}
+
+		if (memory[i] == 0 && hit_zero == 1)
+		{
+			count++;
+		}
+
+		if (memory[i] == 0 &&  memory[i - 1] == id_to_move_back)
+		{
+			hit_zero = 0;
+		}
+
+		if (memory[i] != 0)
+		{
+			if (hit_zero == 1)
+			{
+				id_to_move_back = memory[i];
+				memory[i - count] = id_to_move_back;
+			}
+		}
+	}
 }
 
 // Used to track whether the paging policy was chosen, so compaction can be avoided
@@ -433,7 +491,25 @@ bool paging = false;
  * vacated before repeating the attemt to allocate.
  */
 void allocate(int id, int size) {
-	// TODO
+	if (paging == false)
+	{
+		if (size < count_number_of_zeroes())
+		{
+			if (is_compact() != 1)
+			{
+				printf("Compacting .... \n");
+
+				compaction();
+			}
+		}
+		else
+		{
+			int id_to_evict = find_longest_contiguous_seq();
+			printf("Vacating id == %d .... \n", id_to_evict);
+			vacateProcess(id_to_evict);
+		}
+	}
+
 	policy(id, size);
 }
 

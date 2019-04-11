@@ -67,7 +67,6 @@ void vacateProcess(int id) {
 			memory[i] = 0;
 		}
 	}
-	printf("completed vacating... \n" );
 }
 
 /**
@@ -332,87 +331,48 @@ bool worstFit(int id, int size) {
  * However, a full frame must be reserved for each chunk
  * of allocation, even if it is not used by the process.
  */
-// bool pages(int id, int size) {
-// 	int index = 0;
-
-// 	int frames_left = size / 2;
-
-// 	// count up to MEM_SIZE - size, because past that index, the number of blocks
-// 	// requested will not fit.
-// 	while (index < (MEM_SIZE - frames_left) && frames_left > 0)
-// 	{
-// 		// keep incrementing until we get a zero so there's room
-// 		if (memory[index] != 0)
-// 		{
-// 			index += FRAME_SIZE;
-// 		}
-
-// 		// if the entire frame is clear
-// 		if (memory[index] == 0 && memory[index + 1] == 0)
-// 		{
-// 			memory[index] = id;
-			
-// 			if (frames_left > 1)
-// 				memory[index+1] = id;
-// 			else
-// 			{
-// 				if (size % 2 == 1)
-// 				{
-// 					memory[index+1] = 0;
-// 				}
-// 				else
-// 				{
-// 					memory[index+1] = id;
-// 				}
-// 			}
-
-// 			frames_left -= 1;
-
-// 			index += FRAME_SIZE;
-// 		}
-// 	}
-
-// 	if (frames_left > 0)
-// 	{
-
-// 		// if we didn't return true, we need to evict a process
-// 		int id_to_evict = find_longest_contiguous_seq();
-		
-// 		vacateProcess(id_to_evict);
-// 		pages(id, frames_left * 2);
-// 	}
-
-// 	return false;
-// }
-
 bool pages(int id, int size)
 {
 	int pages_left = size;
+	// if we have an odd number of pages,
+	// we need to leave one page in the frame empty
 	bool leave_empty = false;
+
 	for (int i = 0; i < MEM_SIZE - 1; i += 2)
 	{
+		// if the entire frame we're at is empty
 		if (memory[i] == 0 && memory[i+1] == 0)
 		{
+			// if we're out of pages
+			// this really means we have one more frame if pages is an odd number
 			if (pages_left == 0)
 			{
+				// if we need to write a frame with one empty page
 				if (leave_empty)
-				{	memory[i] = id;
+				{	
+					memory[i] = id;
 					memory[i+1] = 0;
 					leave_empty = false;
 				}
 
+				// finally return true b/c we've written every frame
 				return true;
 			}
+
+			// if there's more than one page left, write the current frame
+			// and decrement pages left by two, the frame size
 			if (pages_left > 1)
 			{
 				memory[i] = id;
 				memory[i+1] = id;
 
-				pages_left -= 2;
+				pages_left -= FRAME_SIZE;
 			}
+			// if there's just one page left, write the frame and then
+			// write the final frame in the if branch where pages_left == 0
+			// b/c we need to write a frame with an empty page
 			if (pages_left == 1)
 			{
-				printf("got here .. \n");
 				memory[i] = id;
 				memory[i + 1] = id;
 				leave_empty = true;
@@ -427,6 +387,7 @@ bool pages(int id, int size)
 		
 	vacateProcess(id_to_evict);
 	
+	// now that a process is vacated, we can recall pages
 	pages(id, pages_left);
 
 	return true;
@@ -434,23 +395,30 @@ bool pages(int id, int size)
 
 // loop through memory and determine if it's compacted or not.
 // return 0 for not compacted, 1 for is compacted
-int is_compact()
+bool is_compact()
 {
-	int got_to_zero = 0;
-	for (int i = 0; i < MEM_SIZE; i++)
+	bool got_to_zero = false;
+	for (int i = 1; i < MEM_SIZE; i++)
 	{
-		if (memory[i] == 0 && got_to_zero == 0)
+		if (memory[i] == 0 && !got_to_zero)
 		{
 			got_to_zero = 1;
 		}
 
-		if (memory[i] != 0 && got_to_zero == 1)
+		if (memory[i] != 0 && got_to_zero)
 		{
-			return 0;
+			return false;
 		}
+		// if (memory[i] != 0)
+		// {
+		// 	if (memory[i-1] == 0)
+		// 	{
+		// 		return false;
+		// 	}
+		// }
 	}
 
-	return 1;
+	return true;
 }
 
 // Track the number of compaction events
@@ -462,35 +430,20 @@ int compactionEvents = 0;
  * need it.
  */
 void compaction() {
-	int hit_zero = 0;
-	int count = 0;
-	int id_to_move_back = 0;
-	for (int i = 1; i < MEM_SIZE; i++)
+	while (!is_compact())
 	{
-		if (memory[i] == 0 && hit_zero == 0)
+		for (int i = 1; i < MEM_SIZE; i++)
 		{
-			count = 0;
-			hit_zero = 1;
-		}
-
-		if (memory[i] == 0 && hit_zero == 1)
-		{
-			count++;
-		}
-
-		if (memory[i] == 0 &&  memory[i - 1] == id_to_move_back)
-		{
-			hit_zero = 0;
-		}
-
-		if (memory[i] != 0)
-		{
-			if (hit_zero == 1)
+			if (memory[i] != 0)
 			{
-				id_to_move_back = memory[i];
-				memory[i - count] = id_to_move_back;
+				if (memory[i-1] == 0)
+				{
+					// swap
+					memory[i-1] = memory[i];
+					memory[i] = 0;
+				}
 			}
-		}
+		} 
 	}
 }
 
@@ -513,19 +466,18 @@ bool paging = false;
 void allocate(int id, int size) {
 	if (paging == false)
 	{
+		// if there's enough room to just compact, then do so
 		if (size < count_number_of_zeroes())
 		{
 			if (is_compact() != 1)
 			{
-				printf("Compacting .... \n");
-
 				compaction();
 			}
 		}
+		// else, vacate a process, then allocate
 		else
 		{
 			int id_to_evict = find_longest_contiguous_seq();
-			printf("Vacating id == %d .... \n", id_to_evict);
 			vacateProcess(id_to_evict);
 		}
 	}

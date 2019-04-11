@@ -186,58 +186,13 @@ int find_tightest_space(int size)
 	return last_index + 1;
 }
 
-int find_first_index(int id)
-{
-	int i = 0;
-	while (i < MEM_SIZE && memory[i] != id)
-		i++;
-	return i;
-}
-
-// Given an ID, find it's last index in memory
-int find_last_index(int id)
-{
-	// printf("looking for id %d\n", id);
-	int i = 0;
-	int found_id = 0;
-	while (i < MEM_SIZE)
-	{
-
-		if (found_id == 0 && memory[i] == id)
-		{
-			// printf("Found first of ID %d at: %d \n", id, i);
-			found_id = 1;
-		}
-
-		if (found_id && memory[i] != id)
-		{
-			return i;
-		}
-
-		i++;
-	}
-
-	return i;
-}
-
+// simply adds one if a zero is read
 int count_number_of_zeroes()
 {
 	int count = 0;
 	for (int i = 0; i < MEM_SIZE; i++)
 		if (memory[i] == 0)
 			count++;
-
-	return count;
-}
-
-int count_contiguous_zeroes_from_index(int index)
-{
-	int count = 0;
-	while (index < MEM_SIZE && memory[index] == 0)
-	{
-		count++;
-		index++;
-	}
 
 	return count;
 }
@@ -383,39 +338,36 @@ bool pages(int id, int size)
 
 	// if we made it through memory without allocating every page
 	// we need to evict a page
-	int id_to_evict = find_longest_contiguous_seq();
+	// int id_to_evict = find_longest_contiguous_seq();
 		
-	vacateProcess(id_to_evict);
+	// printf("Paging is evicting %d \n", id_to_evict);
+
+	// vacateProcess(id_to_evict);
 	
 	// now that a process is vacated, we can recall pages
-	pages(id, pages_left);
+	// pages(id, pages_left);
 
 	return true;
 }
 
 // loop through memory and determine if it's compacted or not.
-// return 0 for not compacted, 1 for is compacted
+// return false for not compacted, true for is compacted
 bool is_compact()
 {
+	// count up, if we get to a positive number/id and there was
+	// a zero before it, memory is not compacted
 	bool got_to_zero = false;
 	for (int i = 1; i < MEM_SIZE; i++)
 	{
 		if (memory[i] == 0 && !got_to_zero)
 		{
-			got_to_zero = 1;
+			got_to_zero = true;
 		}
 
 		if (memory[i] != 0 && got_to_zero)
 		{
 			return false;
 		}
-		// if (memory[i] != 0)
-		// {
-		// 	if (memory[i-1] == 0)
-		// 	{
-		// 		return false;
-		// 	}
-		// }
 	}
 
 	return true;
@@ -430,6 +382,9 @@ int compactionEvents = 0;
  * need it.
  */
 void compaction() {
+	// essentially, keep moving up the memory array,
+	// swapping zeros for the next id, effectively moving all the ids
+	// back in the array. eventually compacting the array/memory.
 	while (!is_compact())
 	{
 		for (int i = 1; i < MEM_SIZE; i++)
@@ -464,18 +419,20 @@ bool paging = false;
  * vacated before repeating the attemt to allocate.
  */
 void allocate(int id, int size) {
-	if (paging == false)
+	
+	// if there's enough room to just compact, then do so
+	if (!paging && size < count_number_of_zeroes())
 	{
-		// if there's enough room to just compact, then do so
-		if (size < count_number_of_zeroes())
+		if (is_compact() != 1)
 		{
-			if (is_compact() != 1)
-			{
-				compaction();
-			}
+			compaction();
 		}
-		// else, vacate a process, then allocate
-		else
+	}
+
+	// else, vacate a process, then allocate
+	else
+	{
+		while (size > count_number_of_zeroes())
 		{
 			int id_to_evict = find_longest_contiguous_seq();
 			vacateProcess(id_to_evict);

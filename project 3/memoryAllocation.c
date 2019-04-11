@@ -231,6 +231,18 @@ int count_number_of_zeroes()
 	return count;
 }
 
+int count_contiguous_zeroes_from_index(int index)
+{
+	int count = 0;
+	while (index < MEM_SIZE && memory[index] == 0)
+	{
+		count++;
+		index++;
+	}
+
+	return count;
+}
+
 /**
  * For each allocation policy below, assign the process id to
  * a contiguous region of memory with "size" number of blocks. Return
@@ -275,29 +287,34 @@ bool firstFit(int id, int size) {
 	return false;
 }
 
+
+
 bool nextFit(int id, int size) {
 	int index = 0;
-	if (id > 1)
-		index = find_last_index(id-1);
-
-	// printf("index starting at is %d and size is %d \n\n", index, size);
-
-	// if the contiguous allocation would overflow
-	// if (index+size > MEM_SIZE)
-	// {
-	// 	// if we didn't return true, we need to evict a process
-	// 	int id_to_evict = find_longest_contiguous_seq();
-
-	// 	index = find_first_index(id_to_evict);
-
-	// 	vacateProcess(id_to_evict);
-	// }
-
+	bool start_inserting = false;
+	int blocks_left = size;
 	// count up to MEM_SIZE - size, because past that index, the number of blocks
 	// requested will not fit.
-	for (int i = index; i < index+size; i++)
+	for (int i = 0; i < MEM_SIZE; i++)
 	{
-		memory[i] = id;
+		if (memory[i] == 0 && blocks_left > 0)
+		{
+			// if (start_inserting == false)
+			// {
+			// 	if (memory[i + size - 1] == 0)
+			// 	{
+			// 		memory[i] = id;
+			// 		start_inserting == true;
+			// 	}	
+			// }
+			// else
+			// {
+			// 	memory[i] = id;
+			// }
+			printf("i == %d\n", i);
+			memory[i] = id;
+			blocks_left--;
+		}
 	}
  
 	return true;

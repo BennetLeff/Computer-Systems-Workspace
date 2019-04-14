@@ -81,7 +81,7 @@ bool (*policy)(int,int);
 
 
 // returns the id of the longest continuous sequence in memory
-int find_longest_contiguous_seq()
+int id_of_longest_contig_sequence()
 {
 	int cur_id = -1;
 	int count = 0;
@@ -90,8 +90,8 @@ int find_longest_contiguous_seq()
 
 	for (int i = 0; i < MEM_SIZE; i++)
 	{
-		if (memory[i] != cur_id && memory[i] != 0)
-		{
+		if (memory[i] != cur_id)
+		{	
 			if (count > max_len)
 			{
 				max_len = count;
@@ -368,17 +368,6 @@ bool pages(int id, int size)
 		}
 	}
 
-	// if we made it through memory without allocating every page
-	// we need to evict a page
-	// int id_to_evict = find_longest_contiguous_seq();
-		
-	// printf("Paging is evicting %d \n", id_to_evict);
-
-	// vacateProcess(id_to_evict);
-	
-	// now that a process is vacated, we can recall pages
-	// pages(id, pages_left);
-
 	return true;
 }
 
@@ -469,7 +458,7 @@ void allocate(int id, int size) {
 	{
 		while (size > count_number_of_zeroes())
 		{
-			int id_to_evict = find_longest_contiguous_seq();
+			int id_to_evict = id_of_longest_contig_sequence();
 			vacateProcess(id_to_evict);
 		}
 	}

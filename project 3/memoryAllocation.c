@@ -83,35 +83,42 @@ bool (*policy)(int,int);
 // returns the id of the longest continuous sequence in memory
 int find_longest_contiguous_seq()
 {
-	int longest_size = 0;
-	int current_size = 0;
-	int id_of_longest = 0;
-	int current_id = 0;
+	int cur_id = -1;
+	int count = 0;
+	int max_len = 0;
+	int max_len_id = -1;
 
 	for (int i = 0; i < MEM_SIZE; i++)
 	{
-		// if indexed element is not the current id, we've reached a new sequence
-		if (memory[i] != current_id)
+		if (memory[i] != cur_id && memory[i] != 0)
 		{
-			// if the size of the previous sequence was longer than the longest
-			// size, we must update the id, and longest_size
-			if (current_size > longest_size)
+			if (count > max_len)
 			{
-				longest_size = current_size;
-				id_of_longest = memory[i - 1];
-				current_size = 0;
+				max_len = count;
+				max_len_id = cur_id;
 			}
 
-			current_id = memory[i];
+			count = 0;
+			cur_id = memory[i];
 		}
 
-		current_size++;
+		else // mem[i] == cur_id
+		{
+			if (memory[i] == 0)
+			{
+				count = 0;
+			}
+			else
+			{
+				count += 1;
+			}
+		}
 	}
 
-	return id_of_longest;
+	return max_len_id;
 }
 
-int find_longest_contiguous_empty_space()
+int index_of_longest_empty_space()
 {
 
 	int largest_space = 0;
@@ -123,9 +130,7 @@ int find_longest_contiguous_empty_space()
 	{
 		if (memory[i] == 0)
 		{
-			// printf("Got a zero.... \n");
 			temp_largest_space += 1;
-			// printf("temp_largest_space == %d\n", temp_largest_space);
 		}
 
 		if (memory[i] != 0)
@@ -147,6 +152,32 @@ int find_longest_contiguous_empty_space()
 	}
 	
 	return last_index_largest_space+1;
+}
+
+int size_of_longest_empty_space()
+{
+	int max_space = 0;
+	int cur_max_space = 0;
+
+	for (int i = 0; i < MEM_SIZE; i++)
+	{
+		if (memory[i] == 0)
+		{
+			cur_max_space++;
+		}
+
+		if (memory[i] != 0)
+		{
+			if (cur_max_space > max_space)
+			{
+				max_space = cur_max_space;
+			}
+
+			cur_max_space = 0;
+		}
+	}
+
+	return max_space;
 }
 
 
@@ -268,7 +299,7 @@ bool bestFit(int id, int size) {
 }
 
 bool worstFit(int id, int size) {
-	int index = find_longest_contiguous_empty_space();
+	int index = index_of_longest_empty_space();
 
 	// count up to MEM_SIZE - size, because past that index, the number of blocks
 	// requested will not fit.
@@ -296,13 +327,13 @@ bool pages(int id, int size)
 	for (int i = 0; i < MEM_SIZE - 1; i += 2)
 	{
 		// if the entire frame we're at is empty
-		if (memory[i] == 0 && memory[i+1] == 0)
+		if (memory[i] == 0)
 		{
 			// if we're out of pages
 			// this really means we have one more frame if pages is an odd number
 			if (pages_left == 0)
 			{
-				// if we need to write a frame with one empty page
+				// // if we need to write a frame with one empty page
 				if (leave_empty)
 				{	
 					memory[i] = id;
@@ -323,6 +354,7 @@ bool pages(int id, int size)
 
 				pages_left -= FRAME_SIZE;
 			}
+
 			// if there's just one page left, write the frame and then
 			// write the final frame in the if branch where pages_left == 0
 			// b/c we need to write a frame with an empty page
@@ -382,6 +414,7 @@ int compactionEvents = 0;
  * need it.
  */
 void compaction() {
+	compactionEvents++;
 	// essentially, keep moving up the memory array,
 	// swapping zeros for the next id, effectively moving all the ids
 	// back in the array. eventually compacting the array/memory.
@@ -419,10 +452,12 @@ bool paging = false;
  * vacated before repeating the attemt to allocate.
  */
 void allocate(int id, int size) {
-	
-	// if there's enough room to just compact, then do so
-	if (!paging && size < count_number_of_zeroes())
+	// if there's enough room to just compact, 
+	// and there isn't a space of empty zeroes to fit the id's in,
+	// then do compaction
+	if (!paging && size <= count_number_of_zeroes() && size > size_of_longest_empty_space())
 	{
+		printf("Size %d of allocation is bigger than %d empty spaces... \n", size, size_of_longest_empty_space() );
 		if (is_compact() != 1)
 		{
 			compaction();

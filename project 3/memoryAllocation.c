@@ -446,7 +446,6 @@ void allocate(int id, int size) {
 	// then do compaction
 	if (!paging && size <= count_number_of_zeroes() && size > size_of_longest_empty_space())
 	{
-		printf("Size %d of allocation is bigger than %d empty spaces... \n", size, size_of_longest_empty_space() );
 		if (is_compact() != 1)
 		{
 			compaction();

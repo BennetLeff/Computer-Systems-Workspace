@@ -83,21 +83,27 @@ bool (*policy)(int,int);
 // returns the id of the longest continuous sequence in memory
 int id_of_longest_contig_sequence()
 {
+	// set up necessary variables for tracking information
 	int cur_id = -1;
 	int count = 0;
 	int max_len = 0;
 	int max_len_id = -1;
 
+	// loop through all values
 	for (int i = 0; i < MEM_SIZE; i++)
 	{
+		// if the current value we're looking at is not the tracked value
 		if (memory[i] != cur_id)
 		{	
+			// if the number of tracked values we counted is greater
+			// than the previous max length, then swap maxes
 			if (count > max_len)
 			{
 				max_len = count;
 				max_len_id = cur_id;
 			}
 
+			// reset values
 			count = 0;
 			cur_id = memory[i];
 		}
@@ -120,21 +126,26 @@ int id_of_longest_contig_sequence()
 
 int index_of_longest_empty_space()
 {
-
+	// set up necessary values for tracking
 	int largest_space = 0;
 	int temp_largest_space = 0;
 
 	int last_index_largest_space = 0;
 
+	// loop through all values
 	for (int i = 0; i < MEM_SIZE; i++)
 	{
+		// if we're looking at a zero, we can increment the current count of zeroes
 		if (memory[i] == 0)
 		{
 			temp_largest_space += 1;
 		}
 
+		// if we're not looking at a zero
 		if (memory[i] != 0)
 		{
+			// if the past count of zeroes if larger than any other,
+			// update the max value to reflect so
 			if (temp_largest_space > largest_space)
 			{
 				largest_space = temp_largest_space;
@@ -144,6 +155,7 @@ int index_of_longest_empty_space()
 			temp_largest_space = 0;
 		}
 
+		// repeat above but with the special case of not resetting temp_largest_space = 0.
 		if (temp_largest_space > largest_space)
 		{
 			largest_space = temp_largest_space;
@@ -156,9 +168,12 @@ int index_of_longest_empty_space()
 
 int size_of_longest_empty_space()
 {
+	// set up tracking vars
 	int max_space = 0;
 	int cur_max_space = 0;
 
+	// we just need to count the size of any distinct set of zeroes,
+	// then store and return the largest one.
 	for (int i = 0; i < MEM_SIZE; i++)
 	{
 		if (memory[i] == 0)
@@ -184,20 +199,27 @@ int size_of_longest_empty_space()
 // size == tightest space, i.e. size of space necessary for blocks i.e. size
 int find_tightest_space(int size)
 {
+	// set default values for necessary variables
 	int smallest = MEM_SIZE;
 	int current_smallest = 0;
 
 	int last_index = -1;
 
+	// loop through all values
 	for (int i = 0; i < MEM_SIZE; i++)
 	{
+		// if we're at a 0, we're in an empty space, so increment the current space size
 		if (memory[i] == 0)
 		{
 			current_smallest += 1;
 		}
 
+		// if we're not at a zero
 		if (memory[i] != 0)
 		{
+			// if the previously tallied zeroes are a shorter sequence than the minimum,
+			// and as long as they're big enough to fit out allocation,
+			// update the smallest index
 			if (current_smallest < smallest && current_smallest > size)
 			{
 				smallest = current_smallest;
@@ -207,6 +229,7 @@ int find_tightest_space(int size)
 			current_smallest = 0;
 		}
 
+		// repeat update if memory does not == 0
 		if (current_smallest < smallest && current_smallest > size)
 		{
 			smallest = current_smallest;
@@ -214,6 +237,7 @@ int find_tightest_space(int size)
 		}
 	}
 
+	// return last index + 1 to correct offset
 	return last_index + 1;
 }
 

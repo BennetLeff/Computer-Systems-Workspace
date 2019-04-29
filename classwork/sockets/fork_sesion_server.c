@@ -78,7 +78,8 @@ void* handle_connection(void* socket_pointer){
 
 int main(int argc, char const *argv[]) 
 { 
-    int server_fd, new_socket, valread; 
+    int server_fd, new_socket, valread;
+    int *temp_socket; 
     struct sockaddr_in address; 
     int opt = 1; 
     int addrlen = sizeof(address); 
@@ -126,20 +127,15 @@ int main(int argc, char const *argv[])
 
         }
 
-         //start a thread if there was no error
-        // pthread_t c_thread;
-        // if(pthread_create(&c_thread, NULL, handle_connection, &new_socket) ) 
-        // {
-        //     fprintf(stderr, "Error creating thread\n");
-        //     return 1;
-        // }
+        temp_socket = malloc(sizeof(int));
+        *temp_socket = new_socket;
 
         pid_t proc_id = fork();
 
         if (proc_id == 0)
         {
             // inside of child
-            handle_connection(&new_socket);
+            handle_connection(temp_socket);
         }
 
     }

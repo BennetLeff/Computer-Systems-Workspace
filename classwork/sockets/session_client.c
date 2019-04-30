@@ -38,10 +38,14 @@ int main(int argc, char const *argv[])
         return -1; 
     } 
     
+
+    sleep(1);
+
     // allocate space to read the process id sent from the server,
     // which will be the id of the process or thread as a unique identifier
     char process_id[1024] = {0};
-    valread = read( sock , process_id, 1024); 
+    valread = read( sock , process_id, 8); 
+    printf("received:%s",process_id);
 
     // vars for reading input
     char *line;
@@ -50,12 +54,15 @@ int main(int argc, char const *argv[])
 
     bool kill = false;
 
+    printf("Begin inputing text to the server.... \n");
+
     // read input
     while (!kill && (read_amount = getline(&line, &len, stdin)) != -1) {
+        printf("read:[%s]",line);
         // send the input text from client to server
         send(sock , line , strlen(line) , 0 ); 
 
-                // kill ends the clients connection... 
+        // kill ends the clients connection... 
         if (strcmp(line, "kill") == 0 || strcmp(line, "kill\n") == 0)
         {
             printf("killed .... ");

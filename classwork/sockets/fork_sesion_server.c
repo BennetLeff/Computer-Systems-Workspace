@@ -12,9 +12,16 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+// #include <errno.h>
+// #include <fcntl.h>
+
 #define PORT 8080
 
 int done = 0;
+
+
+// static int pipe_fds[2];
+
 
 //thread work function
 void* handle_connection(void* socket_pointer){
@@ -26,8 +33,7 @@ void* handle_connection(void* socket_pointer){
 
     bool killed = false;
 
-
-    printf("Inside socket: sockid = %d\n", *sock);
+    printf("Accepted socket: sockid = %d\n", *sock);
 
     while (!killed) 
     {
@@ -39,31 +45,25 @@ void* handle_connection(void* socket_pointer){
         /// killserver prevents new connections
         if (strcmp(received_message_buffer, "killserver") == 0 || strcmp(received_message_buffer, "killserver\n") == 0)
         {
-            done = 1;
-
-            printf("%d$ killserver... done... \n", *sock);
+            printf("killing parent to pipe");
+            kill (getppid(), 9);
         }
 
         // kill ends the clients connection... 
+        // in the fork code this exits/terminates  the child
         if (strcmp(received_message_buffer, "kill") == 0 || strcmp(received_message_buffer, "kill\n") == 0)
         {
-            printf("%d$ kill.... \n", *sock);
             killed = true;
+            exit(42);
         }
 
         else 
         {
-            // we need append an id to the output so we need to create a second buffer
-            char string_sent_to_socket[1024] = {0};
-
-            // append the id to the output
-            sprintf(string_sent_to_socket, "%d$ %s", *sock, received_message_buffer);
-
             // send the id and message back to the client
-            send(*sock , string_sent_to_socket , strlen(string_sent_to_socket) , 0 ); 
+            send(*sock , received_message_buffer , strlen(received_message_buffer) , 0 ); 
 
             // clear the buffer
-            memset(string_sent_to_socket, 0, 1024);
+            memset(received_message_buffer, 0, 1024);
         }
 
         // clear the buffer
@@ -83,7 +83,19 @@ int main(int argc, char const *argv[])
     struct sockaddr_in address; 
     int opt = 1; 
     int addrlen = sizeof(address); 
-       
+
+    // pipe(pipe_fds);
+
+    /* Set O_NONBLOCK flag for the read end (pfd[0]) of the pipe. */
+    // if (fcntl(pipe_fds[0], F_SETFL, O_NONBLOCK) == -1) {
+    //     fprintf(stderr, "Call to fcntl failed.\n"); exit(1);
+    // }
+
+    char pipe_msg_buffer[4] = {0};
+
+    // this should be set to false when the killserver command is issued
+    bool accept_new_connections = true;
+
     // Creating socket file descriptor 
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) 
     { 
@@ -123,24 +135,67 @@ int main(int argc, char const *argv[])
                            (socklen_t*)&addrlen))<0) 
         { 
             perror("accept"); 
-            // exit(EXIT_FAILURE); 
-
         }
 
-        temp_socket = malloc(sizeof(int));
-        *temp_socket = new_socket;
-
-        pid_t proc_id = fork();
-
-        if (proc_id == 0)
+        if (accept_new_connections)
         {
-            // inside of child
-            handle_connection(temp_socket);
+
+            temp_socket = malloc(sizeof(int));
+            *temp_socket = new_socket;
+
+            pid_t proc_id = fork();
+
+            if (proc_id == 0)
+            {
+
+                // inside of child
+                char id_string_buffer[8] = {0};
+
+                // append the id to the output
+                sprintf(id_string_buffer, "%d", getpid());
+
+
+                send(*temp_socket , id_string_buffer , strlen(id_string_buffer) , 0 ); 
+
+
+                handle_connection(temp_socket);
+
+            }
+
+            else
+            {
+                // printf("Branched to read. \n");
+
+                // int nread;
+
+                // /* Close the write-end of the pipe. */
+                // if (close(pipe_fds[1]) == -1) 
+                // { /* Failed to close write end of pipe. */
+                //     fprintf(stderr, "Parent: Couldn’t close write end of pipe.\n"); exit(1);
+                // }
+
+                // for (;;) {
+                //     switch (nread = read(pipe_fds[0], pipe_msg_buffer, 4)) {
+                //         case -1: /* Make sure that pipe is empty. */
+                //         if (errno == EAGAIN) {
+                //             // printf("Parent: Pipe is empty\n"); fflush(stdout);
+                //             sleep(1); break;
+                //         }
+                //         else { /* Reading from pipe failed. */
+                //             fprintf(stderr, "Parent: Couldn’t read from pipe.\n"); exit(1);
+                //         }
+                //         case  0: /* Pipe has been closed. */
+                //             printf("Parent: End of conversation.\n"); fflush(stdout); exit(0);
+                //         default: /* Received a message from the pipe. */
+                //             // printf("Parent: Message -- %s\n", pipe_msg_buffer); fflush(stdout); 
+                //             accept_new_connections = false;
+                //             printf("stopped accepting new connections.... \n");
+                //             break;
+                //     } /* End of switch. */
+                // } /* End of for loop. */                
+            }
         }
-
     }
-
-    printf("Exiting... \n");
 
     return 0; 
 } 

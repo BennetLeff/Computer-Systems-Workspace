@@ -53,6 +53,12 @@ void* handle_connection(void* socket_pointer){
         // in the fork code this exits/terminates  the child
         if (strcmp(received_message_buffer, "kill") == 0 || strcmp(received_message_buffer, "kill\n") == 0)
         {
+            // send the id and message back to the client
+            send(*sock , received_message_buffer , strlen(received_message_buffer) , 0 ); 
+
+            // clear the buffer
+            memset(received_message_buffer, 0, 1024);
+
             killed = true;
             exit(42);
         }

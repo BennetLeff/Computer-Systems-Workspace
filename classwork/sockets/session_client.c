@@ -1,6 +1,7 @@
 #include <stdio.h> 
 #include <sys/socket.h> 
 #include <stdlib.h> 
+#include <stdbool.h>
 #include <netinet/in.h> 
 #include <string.h> 
 #define PORT 8080 
@@ -11,7 +12,6 @@ int main(int argc, char const *argv[])
     struct sockaddr_in address; 
     int sock = 0, valread; 
     struct sockaddr_in serv_addr; 
-    char *kill = "kill";
     char buffer[1024] = {0}; 
     
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) 
@@ -37,34 +37,41 @@ int main(int argc, char const *argv[])
         printf("\nConnection Failed \n"); 
         return -1; 
     } 
-   
+    
+    // allocate space to read the process id sent from the server,
+    // which will be the id of the process or thread as a unique identifier
+    char process_id[1024] = {0};
+    valread = read( sock , process_id, 1024); 
 
     // vars for reading input
     char *line;
     size_t len = 0;
     ssize_t read_amount;
 
-    // read input
-    while ((read_amount = getline(&line, &len, stdin)) != -1) {
-        // printf("Retrieved line of length %zu :\n", read);
-        // do something with input
-        // printf("%s", line);
+    bool kill = false;
 
+    // read input
+    while (!kill && (read_amount = getline(&line, &len, stdin)) != -1) {
+        // send the input text from client to server
         send(sock , line , strlen(line) , 0 ); 
 
-        printf("message sent\n"); 
+                // kill ends the clients connection... 
+        if (strcmp(line, "kill") == 0 || strcmp(line, "kill\n") == 0)
+        {
+            printf("killed .... ");
+            kill = true;
+            return 0;
+        }
+
+        // read the response
         valread = read( sock , buffer, 1024); 
 
-        printf("Server sent back: %s\n", buffer );
+        // print the reponse with the correct id
+        printf("%s$ %s", process_id, buffer );
 
+        // clear the buffer every iteration
         memset(buffer, 0, 1024);
-
     }
-
-    
- 
-
-
 
     return 0; 
 } 

@@ -6,65 +6,82 @@
 #include <netinet/in.h> 
 #include <string.h> 
 #include <pthread.h>
+#include <stdbool.h>
+
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #define PORT 8080
 
 int done = 0;
 
-char received_message_buffer[1024] = {0}; 
 
 //thread work function
 void* handle_connection(void* socket_pointer){
     int valread;
-    char buffer[1024] = {0}; 
-    char *hello = "Hello from server"; 
+
+    char received_message_buffer[1024] = {0}; 
+
     int* sock = (int*)socket_pointer;
 
-    printf("Inside thread: sockid = %d\n", *sock);
+    bool killed = false;
 
-    valread = read( *sock , received_message_buffer, 1024); 
+    printf("Accepted socket: sockid = %d\n", *sock);
 
-    sleep(3);
-
-
-    if (strcmp(received_message_buffer, "kill") != 0 && strcmp(received_message_buffer, "kill\n"))
+    while (!killed) 
     {
-        // printf("buffer is filled with %s ...\n", buffer);
+        valread = read( *sock , received_message_buffer, 1024); 
 
-        printf("received_message_buffer %s .... \n", received_message_buffer);
+        sleep(1);
 
-        send(*sock , received_message_buffer , strlen(received_message_buffer) , 0 ); 
-        printf("Message %s returned. \n", received_message_buffer);
+        // kill ends the clients connection... 
+        // in the fork code this exits/terminates  the child
+        if (strcmp(received_message_buffer, "kill") == 0 || strcmp(received_message_buffer, "kill\n") == 0)
+        {
+            // send the id and message back to the client
+            send(*sock , received_message_buffer , strlen(received_message_buffer) , 0 ); 
+
+            // clear the buffer
+            memset(received_message_buffer, 0, 1024);
+
+            killed = true;
+            kill (getppid(), 9);
+            exit(42);
+        }
+
+        else 
+        {
+            // send the id and message back to the client
+            send(*sock , received_message_buffer , strlen(received_message_buffer) , 0 ); 
+
+            // clear the buffer
+            memset(received_message_buffer, 0, 1024);
+        }
+
+        // clear the buffer
+        memset(received_message_buffer, 0, 1024);
     }
-
-    else 
-    {
-        // finish
-        send(*sock , "kill" , strlen("kill") , 0 ); 
-
-        printf("Shutting Down... \n");
-        done = 1;
-
-        close(*sock);
-
-        exit(0);
-    }
-
-    memset(received_message_buffer, 0, 1024);
 
     close(*sock);
+
+    printf("Socket closed... \n");
 
 }
 
 int main(int argc, char const *argv[]) 
 { 
-    int server_fd, new_socket, valread; 
+    int server_fd, new_socket, valread;
+    int *temp_socket; 
     struct sockaddr_in address; 
     int opt = 1; 
     int addrlen = sizeof(address); 
-    char buffer[1024] = {0}; 
-    char *hello = "Hello from server"; 
-       
+
+    char pipe_msg_buffer[4] = {0};
+
+    // this should be set to false when the killserver command is issued
+    bool accept_new_connections = true;
+
     // Creating socket file descriptor 
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) 
     { 
@@ -79,6 +96,7 @@ int main(int argc, char const *argv[])
         perror("setsockopt"); 
         exit(EXIT_FAILURE); 
     } 
+
     address.sin_family = AF_INET; 
     address.sin_addr.s_addr = INADDR_ANY; 
     address.sin_port = htons( PORT ); 
@@ -96,32 +114,38 @@ int main(int argc, char const *argv[])
         exit(EXIT_FAILURE); 
     } 
 
-
+    // spawn threads inside
     while (done == 0)
     {
         if ((new_socket = accept(server_fd, (struct sockaddr *)&address,  
                            (socklen_t*)&addrlen))<0) 
         { 
             perror("accept"); 
-            // exit(EXIT_FAILURE); 
-
         }
 
-        valread = read( new_socket , received_message_buffer, 1024); 
-        // printf("buffer inside while loop %s\n.... ", received_message_buffer ); 
-        send(new_socket , received_message_buffer , strlen(received_message_buffer) , 0 ); 
-        printf("Message sent to client. \n"); 
-
-         //start a thread
-        pthread_t c_thread;
-        if(pthread_create(&c_thread, NULL, handle_connection, &new_socket) ) 
+        if (accept_new_connections)
         {
-            fprintf(stderr, "Error creating thread\n");
-            return 1;
+
+            temp_socket = malloc(sizeof(int));
+            *temp_socket = new_socket;
+
+            pid_t proc_id = fork();
+
+            if (proc_id == 0)
+            {
+                // inside of child
+                char id_string_buffer[8] = {0};
+
+                // append the id to the output
+                sprintf(id_string_buffer, "%d", getpid());
+
+                // send the process id first so that the client can append it to the right messages
+                send(*temp_socket , id_string_buffer , strlen(id_string_buffer) , 0 ); 
+
+                handle_connection(temp_socket);
+            }
         }
     }
-
-    printf("Exiting... \n");
 
     return 0; 
 } 

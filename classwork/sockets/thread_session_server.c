@@ -20,25 +20,32 @@ void* handle_connection(void* socket_pointer){
 
     int* sock = (int*)socket_pointer;
 
+                // inside of child
+    char id_string_buffer[8] = {0};
+
+    // append the id to the output
+    sprintf(id_string_buffer, "%ld", pthread_self());
+
+    // send the process id first so that the client can append it to the right messages
+    send(*sock , id_string_buffer , 8 , 0 ); 
+
     int valread;
 
     char received_message_buffer[1024] = {0}; 
 
     bool killed = false;
 
-    printf("Accepted socket: sockid = %d\n", *sock);
 
     while (!killed) 
     {
         valread = read( *sock , received_message_buffer, 1024); 
 
-        printf("Read a value from client... %s\n",received_message_buffer);
+        // printf("Read a value from client... %s\n",received_message_buffer);
 
         /// killserver prevents new connections
         if (strcmp(received_message_buffer, "killserver") == 0 || strcmp(received_message_buffer, "killserver\n") == 0)
         {
-            printf("killing parent to pipe");
-            // kill (getppid(), 9);
+            accept_new_connections = false;
         }
 
         // kill ends the clients connection... 
@@ -48,20 +55,13 @@ void* handle_connection(void* socket_pointer){
             // send the id and message back to the client
             send(*sock , received_message_buffer , 1024 , 0 ); 
 
-            // clear the buffer
-            memset(received_message_buffer, 0, 1024);
-
             killed = true;
-            // exit(42);
         }
 
         else 
         {
             // send the id and message back to the client
             send(*sock , received_message_buffer , 1024 , 0 ); 
-
-            // clear the buffer
-            memset(received_message_buffer, 0, 1024);
         }
 
         // clear the buffer
@@ -122,25 +122,17 @@ int main(int argc, char const *argv[])
         { 
             perror("accept"); 
             // exit(EXIT_FAILURE); 
-
         }
 
         if (accept_new_connections)
         {
-
             //start a thread if there was no error
             pthread_t c_thread;
 
-            // inside of child
-            char id_string_buffer[8] = {0};
+            temp_socket = malloc(sizeof(int));
+            *temp_socket = new_socket;
 
-            // append the id to the output
-            sprintf(id_string_buffer, "%d", getpid());
-
-            // send the process id first so that the client can append it to the right messages
-            send(new_socket , id_string_buffer , 8 , 0 ); 
-
-            int thr = pthread_create(&c_thread, NULL, handle_connection, &new_socket);
+            int thr = pthread_create(&c_thread, NULL, handle_connection, temp_socket);
             if(thr) 
             {
                 fprintf(stderr, "Error creating thread\n");

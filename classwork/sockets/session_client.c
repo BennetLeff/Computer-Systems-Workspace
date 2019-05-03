@@ -58,7 +58,7 @@ int main(int argc, char const *argv[])
 
     // read input
     while (!kill && (read_amount = getline(&line, &len, stdin)) != -1) {
-        printf("read:[%s]",line);
+        // printf("read:[%s]\n",line);
         // send the input text from client to server
         send(sock , line , strlen(line) , 0 ); 
 

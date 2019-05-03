@@ -46,7 +46,6 @@ void* handle_connection(void* socket_pointer){
             memset(received_message_buffer, 0, 1024);
 
             killed = true;
-            kill (getppid(), 9);
             exit(42);
         }
 
@@ -72,7 +71,6 @@ void* handle_connection(void* socket_pointer){
 int main(int argc, char const *argv[]) 
 { 
     int server_fd, new_socket, valread;
-    int *temp_socket; 
     struct sockaddr_in address; 
     int opt = 1; 
     int addrlen = sizeof(address); 
@@ -126,24 +124,7 @@ int main(int argc, char const *argv[])
         if (accept_new_connections)
         {
 
-            temp_socket = malloc(sizeof(int));
-            *temp_socket = new_socket;
-
-            pid_t proc_id = fork();
-
-            if (proc_id == 0)
-            {
-                // inside of child
-                char id_string_buffer[8] = {0};
-
-                // append the id to the output
-                sprintf(id_string_buffer, "%d", getpid());
-
-                // send the process id first so that the client can append it to the right messages
-                send(*temp_socket , id_string_buffer , strlen(id_string_buffer) , 0 ); 
-
-                handle_connection(temp_socket);
-            }
+            handle_connection(&new_socket);
         }
     }
 
